@@ -72,14 +72,14 @@ Constants are in `lib/messages.js` (`MSG.*`). Content scripts inline the same st
 UI reacts via `chrome.storage.onChanged` (area `session`).
 
 ## Settings (chrome.storage.sync key `goko.settings`, see lib/settings.js)
-`{ outDir:'' /*helper abs dir, ''=~/Downloads/GokoDownloader*/, subfolder:'GokoDownloader' /*chrome.downloads relative folder for images/thumbs*/, videoQuality:'best', audioFormat:'mp3', filenameTemplate:'%(title)s [%(id)s].%(ext)s', thumbFormat:'jpg', notify:true, minImageSize:200, pageButton:true }`
+`{ outDir:'' /*helper abs dir, ''=~/Downloads/GokoDownloader*/, subfolder:'GokoDownloader' /*chrome.downloads relative folder for images/thumbs*/, videoQuality:'best', audioFormat:'mp3', filenameTemplate:'%(title)s [%(id)s].%(ext)s', thumbFormat:'jpg', notify:true, minImageSize:200, pageButton:true, useCookies:true /*send browser cookies to helper for login-gated videos*/ }`
 
 ## Native messaging protocol (Chrome ⇄ helper/host.py), 4-byte little-endian length + UTF-8 JSON
 Requests may carry `reqId`; non-download replies echo it.
 | request | replies |
 |---|---|
 | `{cmd:'ping', reqId}` | `{type:'pong', reqId, ok:true, host_version, ytdlp_version, ffmpeg_found, out_dir, js_runtime}` (`js_runtime`: `'deno'`\|`'node'`\|`null`) |
-| `{cmd:'download', id, url, mode, quality, audioFormat, outDir?, template?}` | `{type:'started', id}` → many `{type:'progress', id, percent, downloaded, total, speed, eta}` → optional `{type:'status', id, status:'processing'}` (merge/convert) → `{type:'title', id, title}` (when known) → `{type:'done', id, filepath}` or `{type:'error', id, message}` |
+| `{cmd:'download', id, url, mode, quality, audioFormat, outDir?, template?, cookies?}` (`cookies`: `chrome.cookies.Cookie[]`, sent when setting `useCookies`; helper first tries without them and retries once with a temp Netscape cookies.txt only if yt-dlp's error asks for `--cookies`, e.g. age-restricted videos; the file is deleted afterwards) | `{type:'started', id}` → many `{type:'progress', id, percent, downloaded, total, speed, eta}` → optional `{type:'status', id, status:'processing'}` (merge/convert) → `{type:'title', id, title}` (when known) → `{type:'done', id, filepath}` or `{type:'error', id, message}` |
 | `{cmd:'cancel', id}` | `{type:'cancelled', id}` |
 | `{cmd:'open_folder', path?, reqId}` | `{type:'ok', reqId}` |
 | `{cmd:'update', reqId}` | `{type:'update_result', reqId, ok, output, ytdlp_version}` |

@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS = Object.freeze({
   notify: true,
   minImageSize: 200,
   pageButton: true,
+  useCookies: true,
 });
 
 export async function getSettings() {

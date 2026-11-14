@@ -5,6 +5,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 
@@ -172,6 +173,46 @@ def kill_tree(proc):
         log("kill failed: %r" % e)
 
 
+def write_cookie_file(cookies):
+    """Write browser cookies (chrome.cookies.Cookie objects) as a Netscape cookies.txt. Returns path or None."""
+    if not isinstance(cookies, list) or not cookies:
+        return None
+    lines = []
+    for c in cookies:
+        try:
+            name = str(c.get("name") or "")
+            value = str(c.get("value") or "")
+            domain = str(c.get("domain") or "")
+            path = str(c.get("path") or "/")
+            if not name or not domain or any(ch in name + value + domain + path for ch in "\t\r\n"):
+                continue
+            host_only = bool(c.get("hostOnly"))
+            domain = domain.lstrip(".") if host_only else ("." + domain.lstrip("."))
+            expiry = 0 if c.get("session") else int(c.get("expirationDate") or 0)
+            lines.append("\t".join([domain, "FALSE" if host_only else "TRUE", path,
+                                    "TRUE" if c.get("secure") else "FALSE", str(expiry), name, value]))
+        except Exception:
+            continue
+    if not lines:
+        return None
+    fd, fpath = tempfile.mkstemp(prefix="goko-cookies-", suffix=".txt")
+    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+        f.write("# Netscape HTTP Cookie File\n\n" + "\n".join(lines) + "\n")
+    return fpath
+
+
+def needs_auth(message):
+    """yt-dlp points to --cookies for age gates, bot checks, private/members-only videos."""
+    return "--cookies" in message or "Sign in to confirm" in message
+
+
+AUTH_HINT_NO_COOKIES = ("Bu video oturum açmayı gerektiriyor (yaş sınırı, bot doğrulaması veya üyelere özel). "
+                        "Chrome'da YouTube hesabınıza giriş yapın ve Ayarlar'da \"Gerektiğinde tarayıcı oturumunu "
+                        "kullan\" seçeneğinin açık olduğundan emin olun.")
+AUTH_HINT_WITH_COOKIES = ("Tarayıcı oturumuyla da indirilemedi. Chrome'da YouTube'a giriş yaptığınızdan ve hesabınızın "
+                          "bu videoyu izleyebildiğinden emin olun.")
+
+
 def run_download(msg):
     did = msg.get("id")
     url = msg.get("url")
@@ -180,6 +221,7 @@ def run_download(msg):
     st = {"proc": None, "cancelled": False, "out_dir": out_dir}
     with DL_LOCK:
         DOWNLOADS[did] = st
+    cookie_path = None
     try:
         if not exe:
             send({"type": "error", "id": did, "message": "yt-dlp.exe bulunamadi."})
@@ -193,80 +235,100 @@ def run_download(msg):
             send({"type": "error", "id": did, "message": "Klasor olusturulamadi: %s" % e})
             return
         template = msg.get("template") or "%(title)s [%(id)s].%(ext)s"
-        cmd = [exe, "--newline", "--no-playlist", "--no-colors", "--windows-filenames",
-               "-o", template, "-P", out_dir,
-               "--progress-template",
-               "download:GOKO|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|"
-               "%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s",
-               "--print", "before_dl:GOKOTITLE|%(title)s",
-               "--print", "after_move:GOKOFILE|%(filepath)s",
-               "--no-simulate", "--no-quiet", "--progress"]  # --print implies --quiet
+        base = [exe, "--newline", "--no-playlist", "--no-colors", "--windows-filenames",
+                "-o", template, "-P", out_dir,
+                "--progress-template",
+                "download:GOKO|%(progress.downloaded_bytes)s|%(progress.total_bytes)s|"
+                "%(progress.total_bytes_estimate)s|%(progress.speed)s|%(progress.eta)s",
+                "--print", "before_dl:GOKOTITLE|%(title)s",
+                "--print", "after_move:GOKOFILE|%(filepath)s",
+                "--no-simulate", "--no-quiet", "--progress"]  # --print implies --quiet
         fd = ffmpeg_dir()
         if fd:
-            cmd += ["--ffmpeg-location", fd]
+            base += ["--ffmpeg-location", fd]
         jr_name, jr_path = js_runtime()
         if jr_name == "deno":
-            cmd += ["--js-runtimes", "deno:%s" % jr_path]
+            base += ["--js-runtimes", "deno:%s" % jr_path]
         elif jr_name == "node":
-            cmd += ["--js-runtimes", "node"]
+            base += ["--js-runtimes", "node"]
         mode = "audio" if msg.get("mode") == "audio" else "video"
-        cmd += build_format_args(mode, msg.get("quality"), msg.get("audioFormat"))
-        cmd.append(url)
+        base += build_format_args(mode, msg.get("quality"), msg.get("audioFormat"))
         n_streams = 2 if mode == "video" else 1
 
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                stdin=subprocess.DEVNULL, creationflags=CREATE_NO_WINDOW,
-                                encoding="utf-8", errors="replace", env=child_env())
-        st["proc"] = proc
-        send({"type": "started", "id": did})
-
-        tail = []
-        filepath = None
-        processing = False
-        last_emit = 0.0
-        stream_idx = 0
-        dest_count = 0
-        for raw in proc.stdout:
-            line = raw.rstrip("\r\n")
-            if not line:
-                continue
-            if line.startswith("GOKO|"):
-                p = line.split("|")
-                if len(p) < 6:
+        def attempt(cookies_file):
+            cmd = base + (["--cookies", cookies_file] if cookies_file else []) + [url]
+            proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    stdin=subprocess.DEVNULL, creationflags=CREATE_NO_WINDOW,
+                                    encoding="utf-8", errors="replace", env=child_env())
+            st["proc"] = proc
+            if st["cancelled"]:  # cancel arrived while we were (re)starting
+                kill_tree(proc)
+            tail = []
+            filepath = None
+            processing = False
+            last_emit = 0.0
+            stream_idx = 0
+            dest_count = 0
+            for raw in proc.stdout:
+                line = raw.rstrip("\r\n")
+                if not line:
                     continue
-                dl, tot, est, spd, eta = (num(x) for x in p[1:6])
-                total = tot or est
-                pct = (dl / total * 100.0) if (dl is not None and total) else 0.0
-                pct = max(0.0, min(100.0, pct))
-                overall = (stream_idx * 100.0 + pct) / n_streams
-                now = time.time()
-                if now - last_emit >= 0.25 or pct >= 100:
-                    last_emit = now
-                    send({"type": "progress", "id": did, "percent": round(overall, 1),
-                          "downloaded": dl, "total": total, "speed": spd, "eta": eta})
-                continue
-            if line.startswith("GOKOTITLE|"):
-                send({"type": "title", "id": did, "title": line[len("GOKOTITLE|"):]})
-                continue
-            if line.startswith("GOKOFILE|"):
-                filepath = line[len("GOKOFILE|"):].strip()
-                continue
-            if line.startswith("[download] Destination:"):
-                dest_count += 1
-                stream_idx = min(dest_count - 1, n_streams - 1)
-            tail.append(line)
-            del tail[:-20]
-            if not processing and line.startswith(STATUS_PREFIXES):
-                processing = True
-                send({"type": "status", "id": did, "status": "processing"})
-        rc = proc.wait()
+                if line.startswith("GOKO|"):
+                    p = line.split("|")
+                    if len(p) < 6:
+                        continue
+                    dl, tot, est, spd, eta = (num(x) for x in p[1:6])
+                    total = tot or est
+                    pct = (dl / total * 100.0) if (dl is not None and total) else 0.0
+                    pct = max(0.0, min(100.0, pct))
+                    overall = (stream_idx * 100.0 + pct) / n_streams
+                    now = time.time()
+                    if now - last_emit >= 0.25 or pct >= 100:
+                        last_emit = now
+                        send({"type": "progress", "id": did, "percent": round(overall, 1),
+                              "downloaded": dl, "total": total, "speed": spd, "eta": eta})
+                    continue
+                if line.startswith("GOKOTITLE|"):
+                    send({"type": "title", "id": did, "title": line[len("GOKOTITLE|"):]})
+                    continue
+                if line.startswith("GOKOFILE|"):
+                    filepath = line[len("GOKOFILE|"):].strip()
+                    continue
+                if line.startswith("[download] Destination:"):
+                    dest_count += 1
+                    stream_idx = min(dest_count - 1, n_streams - 1)
+                tail.append(line)
+                del tail[:-20]
+                if not processing and line.startswith(STATUS_PREFIXES):
+                    processing = True
+                    send({"type": "status", "id": did, "status": "processing"})
+            return proc.wait(), tail, filepath
+
+        def error_of(rc, tail):
+            errs = [x for x in tail if x.startswith("ERROR:")]
+            return errs[-1] if errs else ("\n".join(tail[-5:]) or ("yt-dlp cikis kodu %s" % rc))
+
+        send({"type": "started", "id": did})
+        rc, tail, filepath = attempt(None)
+        used_cookies = False
+        # Login-gated video (age restriction, bot check, members-only): retry once with the browser session.
+        if rc != 0 and not st["cancelled"] and needs_auth(error_of(rc, tail)):
+            try:
+                cookie_path = write_cookie_file(msg.get("cookies"))
+            except Exception as e:
+                log("cookie file write failed: %r" % e)
+            if cookie_path:
+                log("download %s needs auth, retrying with browser cookies" % did)
+                used_cookies = True
+                rc, tail, filepath = attempt(cookie_path)
         if st["cancelled"]:
             return
         if rc == 0:
             send({"type": "done", "id": did, "filepath": filepath})
         else:
-            errs = [x for x in tail if x.startswith("ERROR:")]
-            message = errs[-1] if errs else ("\n".join(tail[-5:]) or ("yt-dlp cikis kodu %s" % rc))
+            message = error_of(rc, tail)
+            if needs_auth(message):
+                message = "%s\n\n%s" % (AUTH_HINT_WITH_COOKIES if used_cookies else AUTH_HINT_NO_COOKIES, message)
             log("download %s failed rc=%s: %s" % (did, rc, "\n".join(tail)))
             send({"type": "error", "id": did, "message": message})
     except Exception as e:
@@ -274,6 +336,11 @@ def run_download(msg):
         if not st["cancelled"]:
             send({"type": "error", "id": did, "message": str(e)})
     finally:
+        if cookie_path:
+            try:
+                os.remove(cookie_path)
+            except Exception:
+                pass
         with DL_LOCK:
             DOWNLOADS.pop(did, None)
 

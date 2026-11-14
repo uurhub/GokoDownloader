@@ -5,7 +5,7 @@ const $ = (id) => document.getElementById(id);
 
 const TEXT_KEYS = ['outDir', 'subfolder', 'filenameTemplate'];
 const SELECT_KEYS = ['videoQuality', 'audioFormat', 'thumbFormat'];
-const BOOL_KEYS = ['notify', 'pageButton'];
+const BOOL_KEYS = ['notify', 'pageButton', 'useCookies'];
 const MIN_SIZE_MAX = 10000;
 
 const toastEl = $('toast');

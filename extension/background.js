@@ -264,6 +264,23 @@ function notify(message, title = 'Goko Downloader') {
 /* Video / helper commands                                             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Browser cookies for a video URL, handed to the helper. It only uses them (as a temp cookies.txt for
+ * yt-dlp) when a cookie-less attempt fails with a login wall: age restriction, bot check, members-only.
+ */
+async function browserCookiesFor(url) {
+  let host;
+  try { host = new URL(url).hostname.toLowerCase(); } catch (_) { return []; }
+  const isYouTube = /(^|\.)(youtube\.com|youtu\.be|youtube-nocookie\.com)$/.test(host);
+  try {
+    const list = await chrome.cookies.getAll(isYouTube ? { domain: 'youtube.com' } : { url });
+    return list.map(({ name, value, domain, path, secure, hostOnly, session, expirationDate }) =>
+      ({ name, value, domain, path, secure, hostOnly, session, expirationDate }));
+  } catch (_) {
+    return [];
+  }
+}
+
 async function startVideo(p = {}) {
   if (!p.url) return { ok: false, error: 'Geçerli bir bağlantı yok' };
   const s = await getSettings();
@@ -282,6 +299,10 @@ async function startVideo(p = {}) {
   const cmd = { cmd: 'download', id: item.id, url: item.url, mode: item.mode, quality: item.quality, audioFormat: item.audioFormat };
   if (s.outDir) cmd.outDir = s.outDir;
   if (s.filenameTemplate) cmd.template = s.filenameTemplate;
+  if (s.useCookies) {
+    const cookies = await browserCookiesFor(item.url);
+    if (cookies.length) cmd.cookies = cookies;
+  }
   try { postToHost(cmd); }
   catch (e) {
     await updateItem(item.id, { status: 'error', error: errMsg(e) });

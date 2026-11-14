@@ -1,0 +1,66 @@
+{
+  "manifest_version": 3,
+  "name": "Goko Downloader",
+  "short_name": "Goko",
+  "version": "1.0.0",
+  "description": "YouTube ve diğer sitelerden video, küçük resim ve görselleri en yüksek kalitede indirin.",
+  "minimum_chrome_version": "116",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "action": {
+    "default_title": "Goko Downloader",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_page": "options/options.html",
+  "permissions": [
+    "downloads",
+    "contextMenus",
+    "nativeMessaging",
+    "activeTab",
+    "scripting",
+    "storage",
+    "notifications",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.youtube.com/*"
+      ],
+      "js": [
+        "content/youtube.js"
+      ],
+      "css": [
+        "content/youtube.css"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*.png"
+      ],
+      "matches": [
+        "*://*.youtube.com/*"
+      ]
+    }
+  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAw60/olFqtu2J7q9OASDoMIxHFpDkGjn8/NOhAC7MgTPZrUqTa87m5a82xjbcln3qefM1Y/saBhLfnBs14lbki/i00Aglsg8uizLVnCBmLnZifbiaTHJu8sc/RVk+Amm11s1pkR1hK7xDEZio0/ulHbArTS4WLHuUifn/l4xqYoQ3RY9GyJrzDP6knpez7caLZCpEOcu7eWLVVXiJobXWN+Rti2GwN3w79ta7qHVBrtn6CvPEyBBkGAPrzJCWptttcYwYFDcVpcVAtjD+At4bS1j4rTTY/runfEBG80ydGxBumWxfcd+qWuCIrW6rhy4dwApHQMHP/X/LX5D6SW7kRQIDAQAB"
+}

@@ -1,0 +1,12 @@
+tools/extension-key.pem
+helper/vendor/
+helper/dist/
+helper/build/
+installer/output/
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
+Thumbs.db
+helper/host-dev.bat
+helper/com.goko.downloader.dev.json

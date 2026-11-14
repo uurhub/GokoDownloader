@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=380">
+  <meta name="color-scheme" content="light dark">
+  <title>Goko Downloader</title>
+  <link rel="stylesheet" href="popup.css">
+  <script type="module" src="popup.js"></script>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="header">
+      <img class="logo" src="../icons/icon32.png" width="24" height="24" alt="">
+      <span class="brand">Goko Downloader</span>
+      <div class="header-right">
+        <button class="helper-status" id="helperStatus" type="button" data-state="checking"
+                title="Yardımcı uygulama kontrol ediliyor…" aria-label="Yardımcı uygulama durumu: kontrol ediliyor">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="helper-label" id="helperLabel">Kontrol ediliyor</span>
+        </button>
+        <button class="icon-btn" id="settingsBtn" type="button" title="Ayarlar" aria-label="Ayarlar">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="context" id="context"></div>
+    <div class="tabs" id="tabs" role="tablist" aria-label="Bölümler" hidden></div>
+    <main class="main" id="main"></main>
+    <section class="dl" id="dl" aria-label="İndirmeler"></section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+</body>
+</html>

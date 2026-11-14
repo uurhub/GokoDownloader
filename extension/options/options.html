@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Goko Downloader — Ayarlar</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="app-header">
+      <img src="../icons/icon48.png" width="48" height="48" alt="">
+      <h1>Goko Downloader — Ayarlar</h1>
+    </header>
+
+    <section class="card" aria-labelledby="sec-location">
+      <h2 id="sec-location">Kayıt konumu</h2>
+      <div class="field">
+        <label for="outDir">Video indirme klasörü</label>
+        <input type="text" id="outDir" placeholder="Boş bırakırsanız: İndirilenler\GokoDownloader" autocomplete="off" spellcheck="false">
+        <p class="hint">Videolar bu klasöre kaydedilir (yardımcı uygulama üzerinden).</p>
+      </div>
+      <div class="field">
+        <label for="subfolder">Görsel ve küçük resim alt klasörü</label>
+        <input type="text" id="subfolder" autocomplete="off" spellcheck="false">
+        <p class="hint">Chrome'un İndirilenler klasörünün içinde oluşturulur. Boş bırakırsanız doğrudan İndirilenler'e kaydedilir.</p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="sec-video">
+      <h2 id="sec-video">Video</h2>
+      <div class="field">
+        <label for="videoQuality">Varsayılan kalite</label>
+        <select id="videoQuality"></select>
+      </div>
+      <div class="field">
+        <label for="audioFormat">Ses formatı (yalnızca ses indirmede)</label>
+        <select id="audioFormat">
+          <option value="mp3">MP3</option>
+          <option value="m4a">M4A</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filenameTemplate">Dosya adı şablonu</label>
+        <input type="text" id="filenameTemplate" autocomplete="off" spellcheck="false">
+        <p class="hint">yt-dlp şablonu. Örnek: <code>%(title)s [%(id)s].%(ext)s</code> — <code>%(title)s</code> video başlığı, <code>%(id)s</code> video kimliği, <code>%(ext)s</code> uzantı.</p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="sec-images">
+      <h2 id="sec-images">Görseller ve küçük resimler</h2>
+      <div class="field">
+        <label for="thumbFormat">Küçük resim formatı</label>
+        <select id="thumbFormat">
+          <option value="jpg">JPG</option>
+          <option value="webp">WebP</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="minImageSize">Görsel galerisi minimum boyutu</label>
+        <div class="input-suffix">
+          <input type="number" id="minImageSize" min="0" max="10000" step="1" inputmode="numeric">
+          <span>px</span>
+        </div>
+        <p class="field-error" id="minImageSizeError" hidden></p>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="sec-behavior">
+      <h2 id="sec-behavior">Davranış</h2>
+      <label class="toggle-row" for="notify">
+        <span>İndirme bitince bildirim göster</span>
+        <input type="checkbox" class="switch" id="notify">
+      </label>
+      <label class="toggle-row" for="pageButton">
+        <span>YouTube sayfasında İndir butonunu göster</span>
+        <input type="checkbox" class="switch" id="pageButton">
+      </label>
+    </section>
+
+    <section class="card" aria-labelledby="sec-helper">
+      <h2 id="sec-helper">Yardımcı Uygulama</h2>
+      <p class="hint section-intro">Videolar, yardımcı uygulama (yt-dlp ve ffmpeg) üzerinden indirilir. Bağlantı kurulamıyorsa kurulumu yeniden çalıştırın.</p>
+
+      <div class="status" id="helperStatus" role="status" aria-live="polite">
+        <span class="dot wait" aria-hidden="true"></span>
+        <span class="status-text">Durum kontrol ediliyor…</span>
+      </div>
+      <dl class="details" id="helperDetails" hidden></dl>
+
+      <div class="btn-row">
+        <button type="button" class="btn" id="helperRetry">Yeniden dene</button>
+        <button type="button" class="btn" id="ytdlpUpdate">yt-dlp'yi güncelle</button>
+      </div>
+      <p class="hint" id="ytdlpResult" hidden></p>
+      <pre class="output" id="ytdlpOutput" hidden></pre>
+    </section>
+
+    <footer class="footer">
+      <button type="button" class="btn" id="resetDefaults">Varsayılanlara dön</button>
+    </footer>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script type="module" src="options.js"></script>
+</body>
+</html>

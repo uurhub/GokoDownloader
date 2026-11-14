@@ -56,8 +56,23 @@
   pointer-events: none;
 }
 
-.goko-done .goko-btn { color: #1f9d55; }
+/* Dark theme: don't rely on --yt-spec-* vars (not always defined where the
+   button is injected, so they fall back to light-theme values). */
+html[dark] .goko-btn,
+html[dark] .goko-shorts .goko-btn {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f1f1f1;
+}
+html[dark] .goko-btn:hover,
+html[dark] .goko-shorts .goko-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+html[dark] .goko-shorts .goko-label { color: #f1f1f1; }
+
+.goko-done .goko-btn,
+html[dark] .goko-done .goko-btn { color: #1f9d55; }
 .goko-error .goko-btn { color: #d93025; }
+html[dark] .goko-error .goko-btn { color: #ff6b6b; }
 
 /* Shorts: round button above Like, label underneath */
 .goko-root.goko-shorts {
@@ -105,7 +120,8 @@
   font-family: "Roboto", "Arial", sans-serif;
 }
 html[dark] .goko-menu {
-  background: var(--yt-spec-menu-background, #282828);
+  background: #282828;
+  color: #f1f1f1;
   box-shadow: 0 4px 32px rgba(0, 0, 0, 0.6);
 }
 .goko-item {
@@ -128,8 +144,9 @@ html[dark] .goko-menu {
 }
 html[dark] .goko-item:hover,
 html[dark] .goko-item:focus-visible {
-  background: var(--yt-spec-10-percent-layer, rgba(255, 255, 255, 0.1));
+  background: rgba(255, 255, 255, 0.1);
 }
+html[dark] .goko-sep { background: rgba(255, 255, 255, 0.2); }
 .goko-sep {
   height: 1px;
   margin: 8px 0;
